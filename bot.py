@@ -1,4 +1,5 @@
 import os
+import sqlite3
 import zipfile
 import shutil
 import logging
@@ -8,7 +9,8 @@ from telegram import Update
 from telegram.ext import Application, MessageHandler, CommandHandler, ContextTypes, filters
 
 from telethon import TelegramClient as TelethonClient
-from telethon.sessions import StringSession as TelethonStringSession
+from telethon.sessions import StringSession as TelethonStringSession, MemorySession
+from telethon.crypto import AuthKey
 
 from pyrogram import Client as PyroClient
 
@@ -28,9 +30,45 @@ WORK_DIR = "work"
 # file-based sessions and string sessions.
 # ---------------------------------------------------------------------
 
+def manual_telethon_session_from_sqlite(session_file_path: str):
+    """Reads dc_id/server_address/port/auth_key directly out of the sqlite
+    file and builds a Telethon session manually. This bypasses Telethon's
+    built-in SQLiteSession loader, which breaks on files that have extra
+    columns (e.g. some third-party clients like TurboTel add a tmp_auth_key
+    column, causing 'too many values to unpack')."""
+    conn = sqlite3.connect(session_file_path)
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT dc_id, server_address, port, auth_key FROM sessions LIMIT 1")
+        row = cur.fetchone()
+    finally:
+        conn.close()
+
+    if not row:
+        raise RuntimeError("no row in sessions table")
+
+    dc_id, server_address, port, auth_key_bytes = row
+    if not auth_key_bytes or len(auth_key_bytes) < 256:
+        raise RuntimeError("auth_key missing or too short")
+
+    session = MemorySession()
+    session.set_dc(dc_id, server_address, port)
+    session.auth_key = AuthKey(data=auth_key_bytes)
+    return session
+
+
 async def logout_file_telethon(session_path_no_ext: str):
-    client = TelethonClient(session_path_no_ext, API_ID, API_HASH)
-    await client.connect()
+    session_file_path = session_path_no_ext + ".session"
+
+    try:
+        client = TelethonClient(session_path_no_ext, API_ID, API_HASH)
+        await client.connect()
+    except Exception:
+        # Fall back to manually rebuilding the session from the raw sqlite data
+        manual_session = manual_telethon_session_from_sqlite(session_file_path)
+        client = TelethonClient(manual_session, API_ID, API_HASH)
+        await client.connect()
+
     try:
         if not await client.is_user_authorized():
             raise RuntimeError("not authorized")
