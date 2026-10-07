@@ -68,12 +68,16 @@ async def logout_session_file(session_path_no_ext: str, display_name: str) -> st
     try:
         result = await logout_file_telethon(session_path_no_ext)
         return f"✅ {display_name} — {result}"
-    except Exception:
+    except Exception as e_tel:
         try:
             result = await logout_file_pyrogram(session_path_no_ext)
             return f"✅ {display_name} — {result}"
-        except Exception:
-            return f"⚪ {display_name} — could not log in with either client (likely already invalid)"
+        except Exception as e_pyro:
+            return (
+                f"⚪ {display_name} — failed both ways\n"
+                f"    Telethon: {type(e_tel).__name__}: {e_tel}\n"
+                f"    Pyrogram: {type(e_pyro).__name__}: {e_pyro}"
+            )
 
 
 async def logout_string_telethon(session_string: str):
@@ -123,12 +127,16 @@ async def logout_string_session(session_string: str, display_name: str) -> str:
     try:
         result = await logout_string_telethon(session_string)
         return f"✅ {display_name} — {result}"
-    except Exception:
+    except Exception as e_tel:
         try:
             result = await logout_string_pyrogram(session_string)
             return f"✅ {display_name} — {result}"
-        except Exception:
-            return f"❌ {display_name} — not a valid Telethon or Pyrogram string session"
+        except Exception as e_pyro:
+            return (
+                f"❌ {display_name} — failed both ways\n"
+                f"    Telethon: {type(e_tel).__name__}: {e_tel}\n"
+                f"    Pyrogram: {type(e_pyro).__name__}: {e_pyro}"
+            )
 
 
 # ---------------------------------------------------------------------
