@@ -1,7 +1,23 @@
 # Session Destroyer Bot
 
-Telegram bot: send it your own session(s) and it logs each one out instantly
-(no 24h "terminate all sessions" wait — this is a direct, single-session logout).
+Telegram bot with two modes, picked via buttons after `/start`:
+
+- 🔴 **Self Destroyer** — logs out the session(s) you send.
+- 🛡️ **Terminator** — logs in with the session(s) you send, and terminates
+  every *other* active session on that account, keeping only itself. Good
+  for securing an ID instantly if you suspect it's compromised. This uses
+  Telegram's per-session reset API (not the bulk "terminate all" action),
+  so there's no 24h wait.
+- 🆕 **Generate Session** — ordinary login with your own phone number and
+  the OTP Telegram sends to it (plus 2FA password if you have one set),
+  same as logging into Telegram Desktop.
+  - Choose **Telethon** or **Pyrogram** format first
+  - After each account, choose "Add another account" to generate several
+    in one session, or "Done" to get the result
+  - 1 account → string session (in chat) + a `.session` file + a
+    `string_sessions.txt` with that string
+  - 2+ accounts → string session for each (in chat) + all `.session` files
+    and a `string_sessions.txt` (one string per account) bundled into one `.zip`
 
 Accepts, in any combination:
 - a `.zip` containing `.session` files and/or `.txt` files
